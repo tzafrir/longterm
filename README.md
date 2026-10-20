@@ -1,3 +1,5 @@
+![Longterm: Claude keeps its plan in a pane beside the chat, ticks steps off as the work moves, and brings the plan back in the next session](media/hero.gif)
+
 # Longterm
 
 **Claude keeps the plan in a pane, so step 3 is still there after step 2 took an hour.**
