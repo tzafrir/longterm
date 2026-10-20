@@ -212,10 +212,20 @@ def has_pane(screen):
         return False
 
 
+def placement(screen):
+    """Where the pane is drawn: `inline`, framed above the prompt, or `dock`, beside the transcript."""
+    return 'inline' if frame_top(screen.split('\n')) is not None else 'dock'
+
+
+def frame_top(lines):
+    """The row a framed pane starts on: its frame's top, with the close mark. A toast's frame has none."""
+    return next((i for i, line in enumerate(lines) if line.lstrip().startswith('╭') and '✕' in line), None)
+
+
 def pane_body(screen):
     """The pane's rows in order, its frame and padding stripped."""
     lines = screen.split('\n')
-    top = next((i for i, line in enumerate(lines) if line.lstrip().startswith('╭')), None)
+    top = frame_top(lines)
     if top is None:
         return dock_body(lines)
     bottom = next(i for i, line in enumerate(lines) if i > top and line.lstrip().startswith('╰'))
@@ -233,7 +243,7 @@ def toast_body(screen):
 
 
 def dock_body(lines):
-    """The rows right of the rule a docked pane draws down the screen's height, from 144 columns up, its close mark's row gone."""
+    """The rows right of the rule a docked pane draws down the screen's height, its close mark's row gone."""
     columns = [{i for i, c in enumerate(line) if c == '│'} for line in lines]
     rule = max(set().union(*columns), key=lambda i: sum(i in found for found in columns), default=None)
     if rule is None or sum(rule in found for found in columns) < len(lines) // 2:
