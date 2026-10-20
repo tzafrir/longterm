@@ -2,7 +2,7 @@
 
 A Claude Code mod in which Claude keeps the plan, a list of steps or a note it gives the user in a pane, and edits it as the work moves, so the later steps stay in front of the user however long the earlier ones take.
 
-Status: v1.0.0, checked against the mod API of Claude Code 2.1.304: 18 kit tests and the live render check pass, strict validation passes.
+Status: v1.0.0, checked against the mod API of Claude Code 2.1.304: 18 kit tests and the live render check pass, strict validation passes. Since 1.0.1, a pane the terminal is too narrow to seat unasked (under 144 columns) says so with a toast naming /longterm, when a session starts with snippets and when Claude keeps one or brings one here; when a snippet changed stays whole beside a long title; /resume in place shows the resumed session's snippets; and Claude ticks a finished step rather than striking it through, which the terminal draws as raw tildes.
 
 ## The problem
 
@@ -21,6 +21,7 @@ Claude calls `save_snippet` when it gives the user something they will work thro
 - **One store value per project** (`project:<root>`): the snippets and the next number. Numbers count up per project and are never given again, so `#4` means one snippet for as long as it exists.
 - **Only the main agent writes.** A subagent may list snippets; keeping, editing or removing is the user's main thread's.
 - **Limits that say what to do.** 30 snippets per session, a one-line title of 80 characters, a body of 8,000. Past a limit Claude is denied with the reason and the way out; nothing is cut.
+- **The pane opens by itself, and says so when it can't.** It opens as a session with snippets starts and when Claude keeps or brings one here. The engine seats a pane opened unasked only from 144 columns, so below that a toast says what changed and names `/longterm`, which seats it at any width.
 - **The person can always undo.** Remove asks once more; Copy puts the body on the clipboard.
 - **A broken store answers, never hangs.** Each tool call catches a failure and tells Claude to give the user the list in its reply instead.
 

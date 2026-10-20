@@ -64,7 +64,7 @@ const TOOLS: readonly ToolSpec[] = [
     name: 'edit_snippet',
     description: [
       'Change a snippet in the Longterm pane: a new title, a new body, or both. The body you give replaces the old one whole.',
-      'Use it as the work moves: mark a step done (strike it through, or tick it), add a step, or note what you learned.',
+      'Use it as the work moves: mark a step done (tick it, `- [x]`: the terminal draws ~~strikethrough~~ as raw tildes), add a step, or note what you learned.',
       "An earlier session's snippet comes into this session when you edit it. Give its id alone to bring it here unchanged.",
     ].join(' '),
     inputSchema: {
@@ -127,18 +127,19 @@ export const register: Register = (on, options) => {
 
     // A resumed session has its own snippets back. A new one starts empty.
     const sessionId = await refresh($)
-    if (mineOf(await read($, snippets), sessionId).length > 0 && e.isInteractive) {
-      await show($, false)
+    const mine = mineOf(await read($, snippets), sessionId)
+    if (mine.length > 0 && e.isInteractive) {
+      await show($, false, `This session: ${plural(mine.length, 'snippet')}`)
     }
 
     return next(e)
   })
 
-  // After /clear the process goes on as a new session, with no session.start.
+  // After /clear or /resume the process goes on as another session, with no session.start.
   on('session.end', async ($, e, next) => {
     const ended = await next(e)
 
-    if (e.reason === 'clear') {
+    if (e.reason === 'clear' || e.reason === 'resume') {
       $.clock.after(0, () => void refresh($).catch(() => undefined))
     }
 
@@ -216,7 +217,7 @@ export const register: Register = (on, options) => {
     }
 
     await persist($, kept.stored)
-    await show($, false)
+    await show($, false, `Kept #${kept.snippet.id} "${kept.snippet.title}"`)
 
     return { result: `Kept #${kept.snippet.id} "${kept.snippet.title}" in the user's Longterm pane. Edit it with edit_snippet as the work moves.` }
   }).catch(FAILED)
@@ -237,7 +238,7 @@ export const register: Register = (on, options) => {
     }
 
     await persist($, edited.stored)
-    await show($, false)
+    await show($, false, edited.isBrought ? `Brought #${edited.snippet.id} "${edited.snippet.title}" here` : undefined)
 
     const done = edited.isBrought ? 'Brought' : 'Updated'
     const where = edited.isBrought ? 'into this session\'s Longterm pane' : 'in the Longterm pane'
@@ -307,7 +308,9 @@ export const register: Register = (on, options) => {
         <Box key={`snippet-${s.id}`} flexDirection="column" marginBottom={1}>
           <Box key={`head-${s.id}`} flexDirection="row" columnGap={2}>
             <Text bold={!isEarlier} dimColor={isEarlier} wrap="truncate-end">{`#${s.id} ${s.title}`}</Text>
-            <Text dimColor wrap="truncate-end">{metaOf(s, nowMs)}</Text>
+            <Box flexShrink={0}>
+              <Text dimColor>{metaOf(s, nowMs)}</Text>
+            </Box>
           </Box>
           <Markdown key={`body-${s.id}`} text={s.body} dimColor={isEarlier} />
           <Box flexDirection="row" columnGap={3}>
@@ -366,9 +369,17 @@ async function refresh($: EngineInterface): Promise<string> {
   return sessionId
 }
 
-/** The pane is a view of the snippets: one that can't open costs the user a /longterm, never the snippet. */
-async function show($: EngineInterface, isAsked: boolean) {
-  await $.ui.open({ id: PANE, title: 'Longterm', ...(isAsked ? { focus: true as const } : {}) }).catch(() => undefined)
+/**
+ * The pane is a view of the snippets: one that can't open costs the user a
+ * /longterm, never the snippet. Opened unasked below 144 columns it waits
+ * undrawn, so `unseated` says what changed, and where to see it, as a toast.
+ */
+async function show($: EngineInterface, isAsked: boolean, unseated?: string) {
+  const opened = await $.ui.open({ id: PANE, title: 'Longterm', ...(isAsked ? { focus: true as const } : {}) }).catch(() => undefined)
+
+  if (unseated !== undefined && opened?.isPlaced === false && !opened.reason.startsWith('no-surface')) {
+    $.ui.toast(`${unseated} · /${COMMAND}`)
+  }
 }
 
 async function copyPressed($: EngineInterface, snippet: Snippet, surface: RenderSurface) {

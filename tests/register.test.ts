@@ -50,7 +50,10 @@ function seat(on: On, store: Record<string, unknown> = {}) {
     opens: [] as PaneOpenArgs[],
     toasts: [] as string[],
     copied: [] as string[],
+    tools: [] as { name: string; description: string }[],
     sessionId: 'session-1',
+    /** What an unasked open answers: drawn, or waiting undrawn and why. */
+    placement: { isPlaced: true } as { isPlaced: true } | { isPlaced: false; reason: string },
   }
 
   const clock = mock.clock(on, { now: NOW })
@@ -62,7 +65,11 @@ function seat(on: On, store: Record<string, unknown> = {}) {
   on('session.id', () => ({ value: world.sessionId }))
   on('session.root', () => ({ value: '/repo' }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('tool.register', ($, e) => ({ value: { tool: `mcp__longterm__${e.name}` } }))
+  on('session.end', ($, e) => ({ sessionId: e.sessionId }))
+  on('tool.register', ($, e) => {
+    world.tools.push({ name: e.name, description: e.description })
+    return { value: { tool: `mcp__longterm__${e.name}` } }
+  })
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('prompt.context', ($, e) => ({ blocks: e.blocks }))
@@ -72,7 +79,7 @@ function seat(on: On, store: Record<string, unknown> = {}) {
   })
   on('ui.open', ($, e) => {
     world.opens.push(e)
-    return { value: { isPlaced: true } }
+    return { value: e.focus === true ? { isPlaced: true } : world.placement }
   })
   on('ui.copy', ($, e) => {
     world.copied.push(e.text)
@@ -318,7 +325,73 @@ describe('the person in the pane', () => {
   })
 })
 
+describe('a terminal too narrow for the pane', () => {
+  /** What the engine answers an unasked open under 144 columns. */
+  const NARROW = { isPlaced: false, reason: 'opened unasked under 144 columns (100 now)' } as const
+
+  test('a kept snippet, or one Claude brings here, says so in a toast with /longterm', async ($, on) => {
+    const { world } = seat(on, { [KEY]: { nextId: 5, snippets: [EARLIER] } })
+    world.placement = NARROW
+    await start($)
+
+    await call($, PLAN)
+    expect(world.toasts).toEqual(['Kept #5 "Ship the funnel fix" · /longterm'])
+
+    await call($, { tool: EDIT, id: 5, body: '- [x] Fix the guest count' })
+    expect(world.toasts).toHaveLength(1)
+
+    await call($, { tool: EDIT, id: 4 })
+    expect(world.toasts.at(-1)).toBe('Brought #4 "Preprod checklist" here · /longterm')
+  })
+
+  test('a resumed session with snippets says so as it starts', async ($, on) => {
+    const { world } = seat(on, { [KEY]: { nextId: 5, snippets: [EARLIER] } })
+    world.sessionId = 'session-0'
+    world.placement = NARROW
+
+    await start($)
+
+    expect(world.toasts).toEqual(['This session: 1 snippet · /longterm'])
+  })
+
+  test('a pane drawn, or a session with no screen, toasts nothing', async ($, on) => {
+    const { world } = seat(on)
+    await start($)
+    await call($, PLAN)
+
+    world.placement = { isPlaced: false, reason: 'no-surface: none attached' }
+    await call($, { ...PLAN, title: 'Second plan' })
+
+    expect(world.toasts).toEqual([])
+  })
+})
+
+describe('/resume in place', () => {
+  test('the pane shows the resumed session\'s snippets as its own', async ($, on) => {
+    const { world, clock } = seat(on, { [KEY]: { nextId: 5, snippets: [EARLIER] } })
+    await start($)
+    expect(await textOf($, 'toggle-earlier')).toBe('Earlier sessions: 1 snippet')
+
+    world.sessionId = 'session-0'
+    await $.session.end({ reason: 'resume', sessionId: 'session-1', resume: { id: 'session-0' } } as never)
+    await clock.settle()
+
+    expect(await textOf($, 'head-4')).toContain('#4 Preprod checklist')
+    expect(await textOf($, 'toggle-earlier')).toBe('')
+  })
+})
+
 describe('steering', () => {
+  test('edit_snippet asks for a tick, which the pane draws, not a strikethrough, which it does not', async ($, on) => {
+    const { world } = seat(on)
+    await start($)
+
+    const description = world.tools.find(t => t.name === 'edit_snippet')?.description ?? ''
+
+    expect(description).toContain('tick it, `- [x]`')
+    expect(description).not.toContain('strike it through')
+  })
+
   test('the system prompt says when to keep a snippet, where Claude can reach the tool', async ($, on) => {
     seat(on)
     on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude Code.', scope: 'shared' }] }))
