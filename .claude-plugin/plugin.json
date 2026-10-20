@@ -1,0 +1,33 @@
+{
+  "name": "longterm",
+  "displayName": "Longterm",
+  "version": "1.0.0",
+  "description": "Claude keeps a plan, a list of next steps or any snippet you will come back to in your Longterm pane, for the session. Earlier sessions' snippets wait a few days, for you or Claude to bring back.",
+  "author": {
+    "name": "Tzafrir Rehan"
+  },
+  "homepage": "https://github.com/tzafrir/longterm",
+  "repository": "https://github.com/tzafrir/longterm",
+  "license": "MIT",
+  "documentationUrl": "https://github.com/tzafrir/longterm#readme",
+  "supportUrl": "https://github.com/tzafrir/longterm/issues",
+  "privacyPolicyUrl": "https://github.com/tzafrir/longterm/blob/main/docs/privacy.md",
+  "keywords": [
+    "notes",
+    "plan",
+    "checklist",
+    "pane",
+    "snippets",
+    "mod",
+    "function-hooks"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "keepDays": {
+      "type": "number",
+      "title": "Keep earlier snippets (days)",
+      "description": "An earlier session's snippet waits this long after its last change, for you or Claude to bring it into a new session. Then it is gone.",
+      "default": 3
+    }
+  }
+}

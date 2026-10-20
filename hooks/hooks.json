@@ -1,0 +1,4 @@
+{
+  "description": "Longterm: snippets Claude keeps for you in a pane, kept per project across sessions",
+  "modules": ["./register.tsx"]
+}
