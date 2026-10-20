@@ -3,8 +3,8 @@
 The test kit checks the tree the plugin returns, never how a terminal lays it
 out. This runs the real engine instead: a throwaway config folder, the store
 seeded with snippets an earlier session left, `/longterm`, and
-`tmux capture-pane` at the width asked for. No model is called, so a dummy
-API key does.
+`tmux capture-pane` at the width asked for. No model is called, so it needs
+no API key.
 """
 
 import hashlib
@@ -17,9 +17,6 @@ import sys
 import tempfile
 import time
 import uuid
-
-KEY = 'render-check-not-a-real-key'
-
 
 def run(*args, check=True, **kw):
     return subprocess.run(args, check=check, capture_output=True, text=True, **kw)
@@ -91,7 +88,6 @@ class Claude:
                 {
                     'hasCompletedOnboarding': True,
                     'theme': 'dark',
-                    'customApiKeyResponses': {'approved': [KEY[-20:]], 'rejected': []},
                     'projects': {self.project: {'hasTrustDialogAccepted': True}},
                 },
                 f,
@@ -109,7 +105,6 @@ class Claude:
             'TERM': 'xterm-256color',
             'LANG': os.environ.get('LANG') or 'C.UTF-8',
             'CLAUDE_CONFIG_DIR': self.config,
-            'ANTHROPIC_API_KEY': KEY,
         }
 
     def start(self, columns, rows):

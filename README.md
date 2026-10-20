@@ -6,28 +6,28 @@
 
 Claude writes "Let's do: 1. 2. 3. 4." You start on 1, then 2, and by then 3 and 4 are far up the scroll.
 
-With this mod, Claude keeps that list in your **Longterm** pane. It edits the list as the work moves, and removes it when nothing is left to do.
+The same goes for what you must not forget later: the debug log to take out, the test you skipped, the follow-up you put off.
+
+With this mod, Claude keeps such a list in your **Longterm** pane. It edits the list as the work moves, and removes it when nothing is left to do.
 
 ## An example
 
-> Fix the guest count in the signup funnel and ship it.
+> Checkout times out in staging. Find out why. Anything you change just to debug it, we undo before merging.
 
-Claude lays out four steps and keeps them. Two steps in, the pane reads:
+Claude digs in. Along the way it adds a debug log to `charge.ts`, raises the payment gateway's timeout to get a full trace, and skips the flaky `refund.test.ts` so the suite runs. Each change is fine for now and a bug if it ships, so Claude keeps them as it goes:
 
 ```
-╭──────────────────────────────────────────────────────────────────✕─╮
-│ #4 Ship the funnel fix  changed 10m ago                            │
-│ - [x] Fix the guest count in funnel.ts                             │
-│ - [x] Add the test                                                 │
-│ - [ ] Push to main                                                 │
-│ - [ ] Watch CI                                                     │
-│ Copy   Remove                                                      │
-│                                                                    │
-│ Earlier sessions: 1 snippet                                        │
-╰────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────✕─╮
+│ #3 Undo before merging  changed 40m ago                  │
+│ - [ ] Remove the debug log in charge.ts                  │
+│ - [ ] Put the gateway timeout back to 5s                 │
+│ - [ ] Unskip refund.test.ts                              │
+│ Copy   Remove                                            │
+│                                                          │
+╰──────────────────────────────────────────────────────────╯
 ```
 
-When CI is green, Claude removes the snippet. The `Earlier sessions` row holds what an earlier session in this project left, for you or Claude to bring back.
+An hour later the cause is fixed, and those three changes are far up the scroll. You don't have to remember them, because the pane still lists them. Before you merge, Claude undoes each one, ticks it, and removes the snippet when all three are done. If you stop for the day first, the list waits under `Earlier sessions` in this project, for you or Claude to bring back tomorrow.
 
 ## How it works
 
@@ -98,7 +98,7 @@ Nothing else goes into a prompt. The mod reads two facts about the session, the 
 
 ### Which tool calls it answers
 
-Only calls to its own four tools, `save_snippet`, `edit_snippet`, `remove_snippet` and `list_snippets`, which the mod itself serves. Every other tool call passes through untouched. Their answers name snippets by number and title, and `list_snippets` gives their bodies and when each last changed: nothing about you, your files or the session.
+The mod answers calls to its own four tools itself, in place of a tool: `save_snippet`, `edit_snippet`, `remove_snippet` and `list_snippets`, each time Claude calls one. Every other tool call passes through untouched. Their answers name snippets by number and title, and `list_snippets` gives their bodies and when each last changed: nothing about you, your files or the session.
 
 ## Support
 
@@ -106,16 +106,15 @@ Report a problem or ask for a feature in [GitHub Issues](https://github.com/tzaf
 
 ## Develop
 
-Load the plugin from a clone; the session reloads it as you edit:
+In a clone of this repository, load the plugin from it; the session reloads it as you edit:
 
 ```
-git clone https://github.com/tzafrir/longterm
-claude --plugin-dir longterm
+claude --plugin-dir .
 ```
 
 ```
-claude plugin validate --strict longterm/.claude-plugin/plugin.json
-claude plugin test longterm
+claude plugin validate --strict .claude-plugin/plugin.json
+claude plugin test .
 ```
 
 The test kit checks the tree the plugin draws, never how a terminal lays it out. `python3 tests/live/test_pane.py` draws the pane in a real Claude Code in tmux, at narrow and wide widths, and reads the screen back; no model is called. With `RENDERS_DIR` set it keeps every screen, and `python3 tests/live/renders.py "$RENDERS_DIR"` lays them out. Loading the plugin lays the engine's types in `.claude-plugin/types/`; then `tsc -p .` type-checks.
