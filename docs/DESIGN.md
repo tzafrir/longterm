@@ -28,4 +28,4 @@ Claude calls `save_snippet` when it gives the user something they will work thro
 ## Testing
 
 - `claude plugin test .`: the kit, for every tool, the pane's buttons, sessions new and resumed, and the system prompt.
-- `python3 tests/live/test_pane.py`: the pane in a real Claude Code in tmux, at 36, 60, 100 and 150 columns, because the kit never lays out a screen. CI keeps every screen as a `renders` artifact and on the run's summary.
+- `python3 tests/live/test_pane.py`: the pane in a real Claude Code in tmux, because the kit never lays out a screen: framed above the prompt at 36, 60 and 109 columns, docked beside the transcript at 110, 144, 200 and 300 (the dock stops growing near 88 columns), opened unasked from 144, and the toast at 60 and 143. CI keeps every screen as a `renders` artifact and on the run's summary.

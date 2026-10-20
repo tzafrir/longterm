@@ -4,7 +4,9 @@ Run with `python3 tests/live/test_pane.py` from the repository's root, with
 `claude` and `tmux` on the PATH. Each case seeds the store with snippets,
 starts a session in a terminal of the given size, opens the pane and reads
 the screen back: every snippet's head, body and buttons show, and nothing is
-cut off at the pane's bottom. With RENDERS_DIR set, each screen a test reads
+cut off at the pane's bottom. Below 110 columns the pane is framed above the
+prompt; from 110 it docks beside the transcript, about 88 columns at most,
+and opened unasked it is drawn only from 144. With RENDERS_DIR set, each screen a test reads
 is kept there, and `tests/live/renders.py` lays them out. PLUGIN_DIR draws
 another copy of the plugin.
 """
@@ -15,14 +17,16 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(__file__))
-from screen import Claude, pane_body, toast_body  # noqa: E402
+from screen import Claude, pane_body, placement, toast_body  # noqa: E402
 
 ROOT = os.environ.get('PLUGIN_DIR') or os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-WIDTHS = (36, 60, 100)
+# Each side of where the pane docks (110), where it opens unasked (144), and
+# past where the dock stops growing.
+WIDTHS = (36, 60, 109, 110, 144, 200, 300)
+DOCK_FROM = 110
+UNASKED_FROM = 144
 # Tall enough that the layout spares the pane every row it asks for.
 HEIGHT = 90
-# Opened unasked, a pane is seated only from 144 columns.
-WIDE = 150
 
 HOUR_MS = 3_600_000
 
@@ -78,8 +82,9 @@ class Pane(unittest.TestCase):
         finally:
             claude.close()
         body = pane_body(screen)
-        context = f'at {columns} columns the pane drew:\n' + '\n'.join(body)
-        return body, context
+        context = f'at {columns} columns the pane drew {placement(screen)}:\n' + '\n'.join(body)
+        self.assertEqual(placement(screen), 'dock' if columns >= DOCK_FROM else 'inline', context)
+        return body, context, placement(screen) == 'dock'
 
     def head(self, body, snippet, context):
         """The row that heads `snippet`: its number, its title and when it changed."""
@@ -100,56 +105,67 @@ class Pane(unittest.TestCase):
         for line in snippet['body'].split('\n'):
             self.assertIn(line, rows[:end], f"#{snippet['id']}'s body line {line!r} is missing\n" + context)
 
-    def assert_fits(self, body, context):
-        # The last row drawn is the blank one under the last card: none cut off below it.
+    def assert_fits(self, body, context, docked):
+        # The last card's buttons end what is drawn, a blank row under them:
+        # none cut off below. Framed, that row ends the pane, none asked for
+        # and left empty; docked, the pane runs on to the screen's bottom.
         rows = [row.strip() for row in body]
-        self.assertEqual(rows[-1], '', context)
-        self.assertNotEqual(rows[-2], '', 'a row asked for and left empty\n' + context)
+        last = max(i for i, row in enumerate(rows) if row)
+        self.assertEqual(rows[last].split()[-2:], ['Copy', 'Remove'], 'the last card is cut off\n' + context)
+        self.assertGreater(len(rows), last + 1, context)
+        if not docked:
+            self.assertEqual(len(rows), last + 2, 'a row asked for and left empty\n' + context)
 
     def test_slash_longterm_shows_earlier_sessions_snippets_whole(self):
         for columns in WIDTHS:
             with self.subTest(columns=columns):
-                body, context = self.draw([PLAN, CHECKLIST], columns)
+                body, context, docked = self.draw([PLAN, CHECKLIST], columns)
 
                 self.assertIn('Hide earlier sessions', [row.strip() for row in body], context)
                 self.assert_shows(body, PLAN, EARLIER_BUTTONS, context)
                 self.assert_shows(body, CHECKLIST, EARLIER_BUTTONS, context)
-                self.assert_fits(body, context)
+                self.assert_fits(body, context, docked)
 
     def test_this_sessions_snippets_open_the_pane_as_the_session_starts(self):
-        body, context = self.draw([{**PLAN, 'isMine': True}, CHECKLIST], WIDE, asked=False)
+        for columns in (w for w in WIDTHS if w >= UNASKED_FROM):
+            with self.subTest(columns=columns):
+                body, context, docked = self.draw([{**PLAN, 'isMine': True}, CHECKLIST], columns, asked=False)
 
-        self.assert_shows(body, PLAN, BUTTONS, context)
-        self.assertIn('Earlier sessions: 1 snippet', [row.strip() for row in body], context)
-        self.assertNotIn('#2 Preprod checklist', '\n'.join(body), context)
+                self.assert_shows(body, PLAN, BUTTONS, context)
+                self.assertIn('Earlier sessions: 1 snippet', [row.strip() for row in body], context)
+                self.assertNotIn('#2 Preprod checklist', '\n'.join(body), context)
 
     def test_a_long_title_is_cut_to_its_row(self):
         for columns in WIDTHS:
             with self.subTest(columns=columns):
-                body, context = self.draw([{**LONG, 'isMine': True}, {**JAPANESE, 'isMine': True}], columns)
+                body, context, docked = self.draw([{**LONG, 'isMine': True}, {**JAPANESE, 'isMine': True}], columns)
 
                 self.assert_shows(body, LONG, BUTTONS, context)
                 self.assert_shows(body, JAPANESE, BUTTONS, context)
-                self.assert_fits(body, context)
+                self.assert_fits(body, context, docked)
 
     def test_a_narrow_terminal_says_where_this_sessions_snippets_are(self):
         # Opened unasked below 144 columns, the pane waits undrawn: a toast names /longterm.
-        claude = Claude(ROOT)
-        try:
-            claude.seed([{**PLAN, 'isMine': True}])
-            screen = claude.started(100, HEIGHT, lambda s: '/longterm' in s, name=f'{self._testMethodName}-100')
-        finally:
-            claude.close()
+        for columns in (60, UNASKED_FROM - 1):
+            with self.subTest(columns=columns):
+                claude = Claude(ROOT)
+                try:
+                    claude.seed([{**PLAN, 'isMine': True}])
+                    screen = claude.started(columns, HEIGHT, lambda s: '/longterm' in s, name=f'{self._testMethodName}-{columns}')
+                finally:
+                    claude.close()
 
-        self.assertEqual(toast_body(screen), 'longterm This session: 1 snippet · /longterm', screen)
+                self.assertEqual(toast_body(screen), 'longterm This session: 1 snippet · /longterm', screen)
 
     def test_the_body_draws_as_markdown(self):
-        body, context = self.draw([{**MARKDOWN, 'isMine': True}], 60)
-        rows = [row.strip() for row in body]
+        for columns in (60, 200):
+            with self.subTest(columns=columns):
+                body, context, _ = self.draw([{**MARKDOWN, 'isMine': True}], columns)
+                rows = [row.strip() for row in body]
 
-        self.assertIn('Fixed the --force flag.', rows, context)
-        self.assertIn('- One', rows, context)
-        self.assertIn('- Two', rows, context)
+                self.assertIn('Fixed the --force flag.', rows, context)
+                self.assertIn('- One', rows, context)
+                self.assertIn('- Two', rows, context)
 
 
 if __name__ == '__main__':
