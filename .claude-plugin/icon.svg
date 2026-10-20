@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Longterm's listing icon: a sibling of human-in-the-loop's. A plan kept
+       in a pane above the prompt: two steps ticked, the next one open. -->
+  <rect width="1024" height="1024" fill="#1e242b"/>
+  <rect x="56" y="56" width="912" height="912" rx="144" fill="#121619"/>
+  <rect x="180" y="164" width="664" height="436" rx="48" fill="none" stroke="#ffc94a" stroke-width="34"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M262 268 L294 300 L348 236" stroke="#ffc94a" stroke-width="32"/>
+    <path d="M262 388 L294 420 L348 356" stroke="#ffc94a" stroke-width="32"/>
+    <rect x="266" y="469" width="78" height="78" rx="16" stroke="#faf5ee" stroke-width="24"/>
+  </g>
+  <g stroke-linecap="round" stroke-width="38">
+    <line x1="418" y1="268" x2="704" y2="268" stroke="#4e5662"/>
+    <line x1="418" y1="388" x2="640" y2="388" stroke="#4e5662"/>
+    <line x1="418" y1="508" x2="760" y2="508" stroke="#faf5ee"/>
+  </g>
+  <g fill="none" stroke="#faf5ee" stroke-linecap="round" stroke-linejoin="round" stroke-width="48">
+    <path d="M206 682 L326 768 L206 854"/>
+    <line x1="408" y1="854" x2="540" y2="854"/>
+  </g>
+</svg>

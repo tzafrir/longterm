@@ -9,6 +9,7 @@
   "homepage": "https://github.com/tzafrir/longterm",
   "repository": "https://github.com/tzafrir/longterm",
   "license": "MIT",
+  "icon": "./.claude-plugin/icon.png",
   "documentationUrl": "https://github.com/tzafrir/longterm#readme",
   "supportUrl": "https://github.com/tzafrir/longterm/issues",
   "privacyPolicyUrl": "https://github.com/tzafrir/longterm/blob/main/docs/privacy.md",
