@@ -15,7 +15,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(__file__))
-from screen import Claude, pane_body  # noqa: E402
+from screen import Claude, pane_body, toast_body  # noqa: E402
 
 ROOT = os.environ.get('PLUGIN_DIR') or os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 WIDTHS = (36, 60, 100)
@@ -50,6 +50,7 @@ JAPANESE = {
     'id': 8,
     'title': 'ステージング環境のデータベース移行を承認してから本番に進む',
     'body': '移行は月曜日に。',
+    'ageMs': 2 * HOUR_MS,
 }
 
 MARKDOWN = {
@@ -60,6 +61,12 @@ MARKDOWN = {
 
 BUTTONS = ['Copy', 'Remove']
 EARLIER_BUTTONS = ['Bring', 'here', 'Copy', 'Remove']
+
+
+def changed(snippet):
+    """The head's note of when `snippet` last changed, as the pane writes it."""
+    hours = snippet.get('ageMs', HOUR_MS) // HOUR_MS
+    return f'changed {hours}h ago' if hours < 24 else f'changed {hours // 24}d ago'
 
 
 class Pane(unittest.TestCase):
@@ -82,6 +89,8 @@ class Pane(unittest.TestCase):
 
     def assert_shows(self, body, snippet, buttons, context):
         head = self.head(body, snippet, context)
+        # When it changed stays whole beside the title, which gives way first.
+        self.assertTrue(head.endswith(f'  {changed(snippet)}'), f"#{snippet['id']}'s head cut when it changed\n" + context)
         title = re.split(r' {2,}', head)[0]
         # One row: the title is cut where it ends, never wrapped onto the body.
         self.assertTrue(f"#{snippet['id']} {snippet['title']}".startswith(title.rstrip('…')), context)
@@ -117,11 +126,22 @@ class Pane(unittest.TestCase):
     def test_a_long_title_is_cut_to_its_row(self):
         for columns in WIDTHS:
             with self.subTest(columns=columns):
-                body, context = self.draw([{**LONG, 'isMine': True}, {**JAPANESE, 'isMine': True, 'ageMs': 2 * HOUR_MS}], columns)
+                body, context = self.draw([{**LONG, 'isMine': True}, {**JAPANESE, 'isMine': True}], columns)
 
                 self.assert_shows(body, LONG, BUTTONS, context)
                 self.assert_shows(body, JAPANESE, BUTTONS, context)
                 self.assert_fits(body, context)
+
+    def test_a_narrow_terminal_says_where_this_sessions_snippets_are(self):
+        # Opened unasked below 144 columns, the pane waits undrawn: a toast names /longterm.
+        claude = Claude(ROOT)
+        try:
+            claude.seed([{**PLAN, 'isMine': True}])
+            screen = claude.started(100, HEIGHT, lambda s: '/longterm' in s, name=f'{self._testMethodName}-100')
+        finally:
+            claude.close()
+
+        self.assertEqual(toast_body(screen), 'longterm This session: 1 snippet · /longterm', screen)
 
     def test_the_body_draws_as_markdown(self):
         body, context = self.draw([{**MARKDOWN, 'isMine': True}], 60)

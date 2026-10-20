@@ -36,7 +36,8 @@ When CI is green, Claude removes the snippet. The `Earlier sessions` row holds w
 - **A snippet belongs to its session.** A new session starts with an empty pane. A resumed session gets its own snippets back.
 - **Earlier work waits a few days.** Press `Earlier sessions` to see what earlier sessions in this project left, and press **Bring here** to move one into this session. Claude reads it with your next prompt. You can also ask Claude to pick up earlier work: it lists earlier snippets and brings one here. An earlier snippet nobody changed for `keepDays` (3 by default) is gone.
 - **You can remove one.** Press **Remove**, then **Remove it**. **Copy** puts the snippet on the clipboard.
-- `/longterm` opens the pane. With nothing kept in this session, it opens on the earlier ones.
+- **The pane opens by itself** when a session with snippets starts and when Claude keeps one. On a terminal under 144 columns Claude Code doesn't open a pane unasked, so a toast names `/longterm` instead.
+- `/longterm` opens the pane at any width. With nothing kept in this session, it opens on the earlier ones.
 
 ## Claude's tools
 

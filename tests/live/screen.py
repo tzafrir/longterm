@@ -193,6 +193,12 @@ class Claude:
         time.sleep(1.0)
         return snapshot(self.session, name)
 
+    def started(self, columns, rows, until, name=None):
+        """The screen once the session has started and `until(screen)` holds. Kept as `name` when given."""
+        self.start(columns, rows)
+        wait_for(self.session, until)
+        return snapshot(self.session, name)
+
     def close(self):
         self.stop()
         shutil.rmtree(self.home, ignore_errors=True)
@@ -214,6 +220,16 @@ def pane_body(screen):
         return dock_body(lines)
     bottom = next(i for i, line in enumerate(lines) if i > top and line.lstrip().startswith('╰'))
     return [line.strip()[1:-1].rstrip()[1:] if line.strip().startswith('│') else line for line in lines[top + 1 : bottom]]
+
+
+def toast_body(screen):
+    """The text of the toast framed at the screen's top right, its rows joined: the plugin's name, then what it said."""
+    lines = screen.split('\n')
+    top = next(i for i, line in enumerate(lines) if '╭' in line and '✕' not in line)
+    left = lines[top].index('╭')
+    bottom = next(i for i, line in enumerate(lines) if i > top and len(line) > left and line[left] == '╰')
+    rows = [line[left + 1 :].rstrip().removesuffix('│') for line in lines[top + 1 : bottom]]
+    return re.sub(r'\s+', ' ', ' '.join(rows)).strip()
 
 
 def dock_body(lines):
