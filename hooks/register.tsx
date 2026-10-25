@@ -55,7 +55,14 @@ const TOOLS: readonly ToolSpec[] = [
       type: 'object',
       properties: {
         title: { type: 'string', description: `One line that says what the snippet is for. Under ${MAX_TITLE} characters.` },
-        body: { type: 'string', description: `The snippet in markdown, as you would write it in a reply. Under ${MAX_BODY} characters.` },
+        body: {
+          type: 'string',
+          description: [
+            `The snippet in markdown, as you would write it in a reply. Under ${MAX_BODY} characters.`,
+            'A step to tick off starts with its box: `1. [ ] Step` to number the steps, `- [ ] Step` to not.',
+            'Never `- [ ] 1. Step`: the pane draws a number after a box as a lettered sub-list, and the box is gone.',
+          ].join(' '),
+        },
       },
       required: ['title', 'body'],
     },
@@ -64,7 +71,9 @@ const TOOLS: readonly ToolSpec[] = [
     name: 'edit_snippet',
     description: [
       'Change a snippet in the Longterm pane: a new title, a new body, or both. The body you give replaces the old one whole.',
-      'Use it as the work moves: mark a step done (tick it, `- [x]`: the terminal draws ~~strikethrough~~ as raw tildes), add a step, or note what you learned.',
+      'Use it as the work moves: mark a step done, add a step, or note what you learned.',
+      'Mark a step done by ticking its box where it is: `1. [x] Step` in a numbered list, `- [x] Step` in one without numbers.',
+      'Never `- [x] 1. Step`, which the pane draws as a lettered sub-list with no box, nor ~~strikethrough~~, which the terminal draws as raw tildes.',
       "An earlier session's snippet comes into this session when you edit it. Give its id alone to bring it here unchanged.",
     ].join(' '),
     inputSchema: {
