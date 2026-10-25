@@ -50,7 +50,7 @@ function seat(on: On, store: Record<string, unknown> = {}) {
     opens: [] as PaneOpenArgs[],
     toasts: [] as string[],
     copied: [] as string[],
-    tools: [] as { name: string; description: string }[],
+    tools: [] as { name: string; description: string; inputSchema: Record<string, unknown> }[],
     sessionId: 'session-1',
     /** What an unasked open answers: drawn, or waiting undrawn and why. */
     placement: { isPlaced: true } as { isPlaced: true } | { isPlaced: false; reason: string },
@@ -67,7 +67,7 @@ function seat(on: On, store: Record<string, unknown> = {}) {
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('tool.register', ($, e) => {
-    world.tools.push({ name: e.name, description: e.description })
+    world.tools.push({ name: e.name, description: e.description, inputSchema: e.inputSchema })
     return { value: { tool: `mcp__longterm__${e.name}` } }
   })
   on('command.register', ($, e) => ({ value: { command: e.name } }))
@@ -388,8 +388,20 @@ describe('steering', () => {
 
     const description = world.tools.find(t => t.name === 'edit_snippet')?.description ?? ''
 
-    expect(description).toContain('tick it, `- [x]`')
+    expect(description).toContain('ticking its box where it is: `1. [x] Step` in a numbered list, `- [x] Step`')
     expect(description).not.toContain('strike it through')
+  })
+
+  test('a step\'s box goes after its number, never before it, where the pane draws the number as a letter and no box', async ($, on) => {
+    const { world } = seat(on)
+    await start($)
+
+    const save = world.tools.find(t => t.name === 'save_snippet')?.inputSchema as { properties: { body: { description: string } } }
+    const edit = world.tools.find(t => t.name === 'edit_snippet')?.description ?? ''
+
+    expect(save.properties.body.description).toContain('`1. [ ] Step` to number the steps, `- [ ] Step` to not')
+    expect(save.properties.body.description).toContain('Never `- [ ] 1. Step`')
+    expect(edit).toContain('Never `- [x] 1. Step`')
   })
 
   test('the system prompt says when to keep a snippet, where Claude can reach the tool', async ($, on) => {

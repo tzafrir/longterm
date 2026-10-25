@@ -63,6 +63,21 @@ MARKDOWN = {
     'body': '**Fixed** the `--force` flag.\n\n- One\n- Two',
 }
 
+# A step's box after its number, as the tools ask for: the pane draws both.
+NUMBER_THEN_BOX = {
+    'id': 11,
+    'title': 'Ship the funnel fix',
+    'body': '1. [x] Fix the guest count\n2. [ ] Add the test\n3. [ ] Push to main',
+}
+
+# The box before the number, as Claude wrote it until 1.0.2: the number
+# after the box starts a sub-list, which the pane letters, and the box is gone.
+BOX_THEN_NUMBER = {
+    'id': 10,
+    'title': 'Ship the funnel fix, box first',
+    'body': '- [x] 1. Fix the guest count\n- [ ] 2. Add the test\n- [ ] 3. Push to main',
+}
+
 BUTTONS = ['Copy', 'Remove']
 EARLIER_BUTTONS = ['Bring', 'here', 'Copy', 'Remove']
 
@@ -99,11 +114,16 @@ class Pane(unittest.TestCase):
         title = re.split(r' {2,}', head)[0]
         # One row: the title is cut where it ends, never wrapped onto the body.
         self.assertTrue(f"#{snippet['id']} {snippet['title']}".startswith(title.rstrip('…')), context)
-        rows = [row.strip() for row in body[body.index(head) + 1 :]]
+        rows = self.body_of(body, snippet, buttons, context)
+        for line in snippet['body'].split('\n'):
+            self.assertIn(line, rows, f"#{snippet['id']}'s body line {line!r} is missing\n" + context)
+
+    def body_of(self, body, snippet, buttons, context):
+        """The rows `snippet`'s body draws, between its head and its buttons."""
+        rows = [row.strip() for row in body[body.index(self.head(body, snippet, context)) + 1 :]]
         end = next((i for i, row in enumerate(rows) if row.split() == buttons), None)
         self.assertIsNotNone(end, f"#{snippet['id']}'s {' '.join(buttons)} row is missing\n" + context)
-        for line in snippet['body'].split('\n'):
-            self.assertIn(line, rows[:end], f"#{snippet['id']}'s body line {line!r} is missing\n" + context)
+        return rows[:end]
 
     def assert_fits(self, body, context, docked):
         # The last card's buttons end what is drawn, a blank row under them:
@@ -166,6 +186,21 @@ class Pane(unittest.TestCase):
                 self.assertIn('Fixed the --force flag.', rows, context)
                 self.assertIn('- One', rows, context)
                 self.assertIn('- Two', rows, context)
+
+    def test_a_numbered_checklist_keeps_its_numbers_and_boxes_with_the_box_after_the_number(self):
+        for columns in (60, 200):
+            with self.subTest(columns=columns):
+                body, context, _ = self.draw([{**NUMBER_THEN_BOX, 'isMine': True}, {**BOX_THEN_NUMBER, 'isMine': True}], columns)
+
+                self.assert_shows(body, NUMBER_THEN_BOX, BUTTONS, context)
+                # Why the tools forbid the box first: each step is a bare
+                # bullet over its text lettered a., b., c., done or not.
+                # Should the engine draw it whole one day, that rule can go.
+                self.assertEqual(
+                    self.body_of(body, BOX_THEN_NUMBER, BUTTONS, context),
+                    ['-', 'a. Fix the guest count', '-', 'b. Add the test', '-', 'c. Push to main'],
+                    context,
+                )
 
 
 if __name__ == '__main__':

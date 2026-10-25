@@ -1,7 +1,7 @@
 {
   "name": "longterm",
   "displayName": "Longterm",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Claude keeps a plan, a list of next steps or any snippet you will come back to in your Longterm pane, for the session. Earlier sessions' snippets wait a few days, for you or Claude to bring back.",
   "author": {
     "name": "Tzafrir Rehan"

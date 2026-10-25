@@ -2,7 +2,7 @@
 
 A Claude Code mod in which Claude keeps the plan, a list of steps or a note it gives the user in a pane, and edits it as the work moves, so the later steps stay in front of the user however long the earlier ones take.
 
-Status: v1.0.0, checked against the mod API of Claude Code 2.1.304: 18 kit tests and the live render check pass, strict validation passes. Since 1.0.1, a pane the terminal is too narrow to seat unasked (under 144 columns) says so with a toast naming /longterm, when a session starts with snippets and when Claude keeps one or brings one here; when a snippet changed stays whole beside a long title; /resume in place shows the resumed session's snippets; and Claude ticks a finished step rather than striking it through, which the terminal draws as raw tildes.
+Status: v1.0.0, checked against the mod API of Claude Code 2.1.304: 18 kit tests and the live render check pass, strict validation passes. Since 1.0.1, a pane the terminal is too narrow to seat unasked (under 144 columns) says so with a toast naming /longterm, when a session starts with snippets and when Claude keeps one or brings one here; when a snippet changed stays whole beside a long title; /resume in place shows the resumed session's snippets; and Claude ticks a finished step rather than striking it through, which the terminal draws as raw tildes. Since 1.0.2, a step's box goes after its number (`1. [ ] Step`), never before it: the pane draws `- [ ] 1. Step` as a bare bullet over the step lettered `a.`, with no box, so a done step looked like an open one.
 
 ## The problem
 
@@ -28,4 +28,4 @@ Claude calls `save_snippet` when it gives the user something they will work thro
 ## Testing
 
 - `claude plugin test .`: the kit, for every tool, the pane's buttons, sessions new and resumed, and the system prompt.
-- `python3 tests/live/test_pane.py`: the pane in a real Claude Code in tmux, because the kit never lays out a screen: framed above the prompt at 36, 60 and 109 columns, docked beside the transcript at 110, 144, 200 and 300 (the dock stops growing near 88 columns), opened unasked from 144, and the toast at 60 and 143. CI keeps every screen as a `renders` artifact and on the run's summary.
+- `python3 tests/live/test_pane.py`: the pane in a real Claude Code in tmux, because the kit never lays out a screen: framed above the prompt at 36, 60 and 109 columns, docked beside the transcript at 110, 144, 200 and 300 (the dock stops growing near 88 columns), opened unasked from 144, the toast at 60 and 143, and a numbered checklist with its box after the number and before it. CI keeps every screen as a `renders` artifact and on the run's summary.
